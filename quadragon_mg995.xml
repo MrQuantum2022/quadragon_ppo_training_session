@@ -1,0 +1,323 @@
+<mujoco model="full_body">
+
+  <!-- ── Physics settings ───────────────────────────────────────────── -->
+  <option timestep="0.002"
+          integrator="implicitfast"
+          cone="elliptic"
+          noslip_iterations="3"
+          noslip_tolerance="1e-6"/>
+
+  <compiler angle="radian"/>
+
+  <!-- ── Contact buffer size ───────────────────────────────────────── -->
+  <size nconmax="200" njmax="500"/>
+
+  <!-- ── Meshes ─────────────────────────────────────────────────────── -->
+  <asset>
+    <mesh name="base_link"           content_type="model/stl" file="base_link.stl"           scale="0.001 0.001 0.001"/>
+    <mesh name="front_right_hip_1"   content_type="model/stl" file="front_right_hip_1.stl"   scale="0.001 0.001 0.001"/>
+    <mesh name="front_right_thigh_1" content_type="model/stl" file="front_right_thigh_1.stl" scale="0.001 0.001 0.001"/>
+    <mesh name="front_right_calf_1"  content_type="model/stl" file="front_right_calf_1.stl"  scale="0.001 0.001 0.001"/>
+    <mesh name="back_right_hip_1"    content_type="model/stl" file="back_right_hip_1.stl"    scale="0.001 0.001 0.001"/>
+    <mesh name="back_right_thigh_1"  content_type="model/stl" file="back_right_thigh_1.stl"  scale="0.001 0.001 0.001"/>
+    <mesh name="back_right_calf_1"   content_type="model/stl" file="back_right_calf_1.stl"   scale="0.001 0.001 0.001"/>
+    <mesh name="back_left_hip_1"     content_type="model/stl" file="back_left_hip_1.stl"     scale="0.001 0.001 0.001"/>
+    <mesh name="back_left_thigh_1"   content_type="model/stl" file="back_left_thigh_1.stl"   scale="0.001 0.001 0.001"/>
+    <mesh name="back_left_calf_1"    content_type="model/stl" file="back_left_calf_1.stl"    scale="0.001 0.001 0.001"/>
+    <mesh name="front_left_hip_1"    content_type="model/stl" file="front_left_hip_1.stl"    scale="0.001 0.001 0.001"/>
+    <mesh name="front_left_thigh_1"  content_type="model/stl" file="front_left_thigh_1.stl"  scale="0.001 0.001 0.001"/>
+    <mesh name="front_left_calf_1"   content_type="model/stl" file="front_left_calf_1.stl"   scale="0.001 0.001 0.001"/>
+  </asset>
+
+  <!-- ── Exclude self-collisions between connected links ───────────── -->
+  <contact>
+    <exclude body1="base_link"           body2="front_right_hip_1"/>
+    <exclude body1="base_link"           body2="front_left_hip_1"/>
+    <exclude body1="base_link"           body2="back_right_hip_1"/>
+    <exclude body1="base_link"           body2="back_left_hip_1"/>
+    <exclude body1="front_right_hip_1"   body2="front_right_thigh_1"/>
+    <exclude body1="front_left_hip_1"    body2="front_left_thigh_1"/>
+    <exclude body1="back_right_hip_1"    body2="back_right_thigh_1"/>
+    <exclude body1="back_left_hip_1"     body2="back_left_thigh_1"/>
+    <exclude body1="front_right_thigh_1" body2="front_right_calf_1"/>
+    <exclude body1="front_left_thigh_1"  body2="front_left_calf_1"/>
+    <exclude body1="back_right_thigh_1"  body2="back_right_calf_1"/>
+    <exclude body1="back_left_thigh_1"   body2="back_left_calf_1"/>
+  </contact>
+
+  <worldbody>
+
+    <!-- ── Ground plane ──────────────────────────────────────────────── -->
+    <geom name="floor"
+          type="plane"
+          size="10 10 0.1"
+          friction="1.0 0.005 0.0001"
+          rgba="0.8 0.8 0.8 1"/>
+
+    <!-- ── Robot base ─────────────────────────────────────────────────── -->
+    <!--
+      Spawn height 0.20m — closer to actual standing height.
+      Reduced from 0.35m which was causing immediate collapse on spawn.
+    -->
+    <body name="base_link" pos="0 0 0.20">
+      <freejoint name="root"/>
+      <geom type="mesh" rgba="0.7 0.7 0.7 1" mesh="base_link"/>
+      <!--
+        Mass reduced to 0.5kg (was 1.0kg placeholder).
+        Real base plate of a small quadruped is typically 300-600g.
+        Lower mass = easier to balance = faster learning.
+      -->
+      <inertial pos="0 0 0" mass="0.5" diaginertia="0.005 0.005 0.008"/>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           FRONT RIGHT LEG
+           Joint ranges expanded:
+             hip   : ±40° (0.698r) — lateral swing
+             thigh : ±60° (1.047r) — forward/back propulsion
+             calf  : -90° to +10° (-1.571 to 0.175r) — knee bend (one direction)
+           ══════════════════════════════════════════════════════════════ -->
+      <body name="front_right_hip_1" pos="0.043129 -0.202081 0.052509">
+        <inertial pos="0.0148383 -0.0253437 -0.0275562"
+                  quat="0.617072 0.744367 0.143453 0.211093"
+                  mass="0.0732638"
+                  diaginertia="4.27665e-05 3.7307e-05 1.89265e-05"/>
+        <joint name="FR_hip" pos="0 0 0" axis="0 0 1"
+               range="-0.698 0.698"
+               type="hinge" damping="10"/>
+        <geom pos="-0.043129 0.202081 -0.052509" quat="1 0 0 0"
+              type="mesh" rgba="0.7 0.7 0.7 1" mesh="front_right_hip_1"/>
+
+        <body name="front_right_thigh_1" pos="0.00227 -0.054411 -0.036096">
+          <inertial pos="0.0464562 -0.0240354 0.00339576"
+                    quat="0.5 0.5 -0.5 0.5"
+                    mass="0.0439753"
+                    diaginertia="3.9e-05 2.2e-05 2.2e-05"/>
+          <joint name="FR_thigh" pos="0 0 0" axis="-0.852079 -0.523413 0"
+                 range="-1.047 1.047"
+                 type="hinge" damping="2"/>
+          <geom pos="-0.045399 0.256492 -0.016413" quat="1 0 0 0"
+                type="mesh" rgba="0.7 0.7 0.7 1" mesh="front_right_thigh_1"/>
+
+          <body name="front_right_calf_1" pos="0.041873 -0.068166 0">
+            <inertial pos="0.0203393 0.0147238 -0.0393018"
+                      quat="0.502873 0.0397879 -0.0297899 0.86293"
+                      mass="0.0644351"
+                      diaginertia="8.53651e-05 8.23948e-05 8.24012e-06"/>
+            <joint name="FR_calf" pos="0 0 0" axis="0.852079 0.523413 0"
+                   range="-1.571 0.175"
+                   type="hinge" damping="2"/>
+            <geom pos="-0.087272 0.324658 -0.016413" quat="1 0 0 0"
+                  type="mesh" rgba="0.7 0.7 0.7 1" mesh="front_right_calf_1"/>
+            <!-- Foot sphere: size increased to 0.02m for stable ground contact -->
+            <geom name="FR_foot" type="sphere" size="0.02"
+                  pos="0.015 0.030 -0.13"
+                  friction="1.5 0.005 0.0001"
+                  condim="6" rgba="1 0 0 1"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           BACK RIGHT LEG
+           ══════════════════════════════════════════════════════════════ -->
+      <body name="back_right_hip_1" pos="-0.058276 -0.20441 0.052509">
+        <inertial pos="-0.0145291 -0.0255227 -0.0275562"
+                  quat="0.661906 0.695728 -0.248758 -0.126341"
+                  mass="0.0732638"
+                  diaginertia="4.36886e-05 3.7e-05 1.83114e-05"/>
+        <joint name="BR_hip" pos="0 0 0" axis="0 0 1"
+               range="-0.698 0.698"
+               type="hinge" damping="10"/>
+        <geom pos="0.058276 0.20441 -0.052509" quat="1 0 0 0"
+              type="mesh" rgba="0.7 0.7 0.7 1" mesh="back_right_hip_1"/>
+
+        <body name="back_right_thigh_1" pos="-0.045986 -0.029172 -0.036096">
+          <inertial pos="0.00241261 -0.0522499 0.00339577"
+                    quat="0.5 0.5 -0.5 0.5"
+                    mass="0.0439751"
+                    diaginertia="3.9e-05 2.2e-05 2.2e-05"/>
+          <joint name="BR_thigh" pos="0 0 0" axis="-0.879328 0.476216 0"
+                 range="-1.047 1.047"
+                 type="hinge" damping="2"/>
+          <geom pos="0.104262 0.233582 -0.016413" quat="1 0 0 0"
+                type="mesh" rgba="0.7 0.7 0.7 1" mesh="back_right_thigh_1"/>
+
+          <body name="back_right_calf_1" pos="-0.038097 -0.070346 0">
+            <inertial pos="0.0212869 -0.0132637 -0.0393323"
+                      quat="0.831909 -0.00377097 -0.00549776 0.554871"
+                      mass="0.0644455"
+                      diaginertia="8.54161e-05 8.25972e-05 7.98667e-06"/>
+            <joint name="BR_calf" pos="0 0 0" axis="0.879328 -0.476216 0"
+                   range="-1.571 0.175"
+                   type="hinge" damping="2"/>
+            <geom pos="0.142359 0.303928 -0.016413" quat="1 0 0 0"
+                  type="mesh" rgba="0.7 0.7 0.7 1" mesh="back_right_calf_1"/>
+            <geom name="BR_foot" type="sphere" size="0.02"
+                  pos="0.025 -0.010 -0.13"
+                  friction="1.5 0.005 0.0001"
+                  condim="6" rgba="1 0 0 1"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           BACK LEFT LEG
+           ══════════════════════════════════════════════════════════════ -->
+      <body name="back_left_hip_1" pos="-0.062364 -0.053822 0.052509">
+        <inertial pos="-0.0158976 0.0246937 -0.0275562"
+                  quat="0.713623 0.640117 0.173549 0.225551"
+                  mass="0.0732638"
+                  diaginertia="4.3093e-05 3.72593e-05 1.86477e-05"/>
+        <joint name="BL_hip" pos="0 0 0" axis="0 0 1"
+               range="-0.698 0.698"
+               type="hinge" damping="10"/>
+        <geom pos="0.062364 0.053822 -0.052509" quat="1 0 0 0"
+              type="mesh" rgba="0.7 0.7 0.7 1" mesh="back_left_hip_1"/>
+
+        <body name="back_left_thigh_1" pos="-0.047506 0.026624 -0.036096">
+          <inertial pos="-0.000438035 0.0523033 0.00339655"
+                    quat="0.5 0.5 -0.5 0.5"
+                    mass="0.0439749"
+                    diaginertia="3.9e-05 2.2e-05 2.2e-05"/>
+          <joint name="BL_thigh" pos="0 0 0" axis="-0.852079 -0.523413 0"
+                 range="-1.047 1.047"
+                 type="hinge" damping="2"/>
+          <geom pos="0.10987 0.027198 -0.016413" quat="1 0 0 0"
+                type="mesh" rgba="0.7 0.7 0.7 1" mesh="back_left_thigh_1"/>
+
+          <body name="back_left_calf_1" pos="-0.041873 0.068166 0">
+            <inertial pos="0.0223309 0.0114758 -0.0393146"
+                      quat="0.469881 -0.0472631 0.0189879 0.881259"
+                      mass="0.0644461"
+                      diaginertia="8.54047e-05 8.2394e-05 8.20127e-06"/>
+            <joint name="BL_calf" pos="0 0 0" axis="-0.852079 -0.523413 0"
+                   range="-1.571 0.175"
+                   type="hinge" damping="2"/>
+            <geom pos="0.151743 -0.040968 -0.016413" quat="1 0 0 0"
+                  type="mesh" rgba="0.7 0.7 0.7 1" mesh="back_left_calf_1"/>
+            <geom name="BL_foot" type="sphere" size="0.02"
+                  pos="0.025 -0.005 -0.13"
+                  friction="1.5 0.005 0.0001"
+                  condim="6" rgba="1 0 0 1"/>
+          </body>
+        </body>
+      </body>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           FRONT LEFT LEG
+           ══════════════════════════════════════════════════════════════ -->
+      <body name="front_left_hip_1" pos="0.038966 -0.050873 0.052509">
+        <inertial pos="0.0134364 0.0261145 -0.0275562"
+                  quat="0.745779 0.62474 -0.193385 -0.126948"
+                  mass="0.0732638"
+                  diaginertia="4.41171e-05 3.7275e-05 1.86079e-05"/>
+        <joint name="FL_hip" pos="0 0 0" axis="0 0 1"
+               range="-0.698 0.698"
+               type="hinge" damping="10"/>
+        <geom pos="-0.038966 0.050873 -0.052509" quat="1 0 0 0"
+              type="mesh" rgba="0.7 0.7 0.7 1" mesh="front_left_hip_1"/>
+
+        <body name="front_left_thigh_1" pos="-0.000696 0.054454 -0.036096">
+          <inertial pos="0.0450769 0.0265304 0.00339655"
+                    quat="0.5 0.5 -0.5 0.5"
+                    mass="0.0439751"
+                    diaginertia="3.9e-05 2.2e-05 2.2e-05"/>
+          <joint name="FL_thigh" pos="0 0 0" axis="-0.879328 0.476216 0"
+                 range="-1.047 1.047"
+                 type="hinge" damping="2"/>
+          <geom pos="-0.03827 -0.003581 -0.016413" quat="1 0 0 0"
+                type="mesh" rgba="0.7 0.7 0.7 1" mesh="front_left_thigh_1"/>
+
+          <body name="front_left_calf_1" pos="0.038097 0.070346 0">
+            <inertial pos="0.0211091 -0.0135973 -0.0392904"
+                      quat="0.856194 -0.0327991 0.0345557 0.514452"
+                      mass="0.0644287"
+                      diaginertia="8.52732e-05 8.24228e-05 8.30395e-06"/>
+            <joint name="FL_calf" pos="0 0 0" axis="-0.879328 0.476216 0"
+                   range="-1.571 0.175"
+                   type="hinge" damping="2"/>
+            <geom pos="-0.076367 -0.073927 -0.016413" quat="1 0 0 0"
+                  type="mesh" rgba="0.7 0.7 0.7 1" mesh="front_left_calf_1"/>
+            <geom name="FL_foot" type="sphere" size="0.02"
+                  pos="0.015 -0.025 -0.13"
+                  friction="1.5 0.005 0.0001"
+                  condim="6" rgba="1 0 0 1"/>
+          </body>
+        </body>
+      </body>
+
+    </body>
+  </worldbody>
+
+  <!-- ── Actuators ──────────────────────────────────────────────────── -->
+  <!--
+    kp tuning rationale:
+      Hips   kp=40  — lateral swing, high damping already in joint
+      Thighs kp=30  — main propulsion, moderate force needed
+      Calves kp=30  — knee bend, moderate force needed
+
+    ctrlrange matches joint range exactly in radians:
+      hips   : ±0.698  (±40°)
+      thighs : ±1.047  (±60°)
+      calves : -1.571 to 0.175  (-90° to +10°)
+
+    forcerange set to 3× body weight per leg for realistic torque:
+      Total robot weight ≈ 1.73kg × 9.81 ≈ 17N
+      Per leg share ≈ 4.25N
+      forcerange = 30N gives reasonable headroom
+  -->
+  <!--
+    2026-07: forcerange corrected from placeholder +/-30 (which was actually
+    Newtons of body weight, mis-applied to hinge joints where forcerange means
+    torque in N*m) to +/-1.0 N*m, matching real MG995 stall torque (~9-11 kg*cm
+    @ 6.0V =~ 0.9-1.1 N*m). Verified via sim: robot still settles to the same
+    stable standing pose with max joint torque ~0.22 N*m at rest - comfortable
+    headroom for standing, untested for dynamic gait demands.
+  -->
+  <actuator>
+    <!-- FL leg -->
+    <position name="FL_hip"   joint="FL_hip"   kp="40"
+              ctrllimited="true" ctrlrange="-0.698 0.698"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="FL_thigh" joint="FL_thigh" kp="30"
+              ctrllimited="true" ctrlrange="-1.047 1.047"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="FL_calf"  joint="FL_calf"  kp="30"
+              ctrllimited="true" ctrlrange="-1.571 0.175"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+
+    <!-- FR leg -->
+    <position name="FR_hip"   joint="FR_hip"   kp="40"
+              ctrllimited="true" ctrlrange="-0.698 0.698"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="FR_thigh" joint="FR_thigh" kp="30"
+              ctrllimited="true" ctrlrange="-1.047 1.047"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="FR_calf"  joint="FR_calf"  kp="30"
+              ctrllimited="true" ctrlrange="-1.571 0.175"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+
+    <!-- BL leg -->
+    <position name="BL_hip"   joint="BL_hip"   kp="40"
+              ctrllimited="true" ctrlrange="-0.698 0.698"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="BL_thigh" joint="BL_thigh" kp="30"
+              ctrllimited="true" ctrlrange="-1.047 1.047"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="BL_calf"  joint="BL_calf"  kp="30"
+              ctrllimited="true" ctrlrange="-1.571 0.175"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+
+    <!-- BR leg -->
+    <position name="BR_hip"   joint="BR_hip"   kp="40"
+              ctrllimited="true" ctrlrange="-0.698 0.698"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="BR_thigh" joint="BR_thigh" kp="30"
+              ctrllimited="true" ctrlrange="-1.047 1.047"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+    <position name="BR_calf"  joint="BR_calf"  kp="30"
+              ctrllimited="true" ctrlrange="-1.571 0.175"
+              forcelimited="true" forcerange="-1.0 1.0"/>
+  </actuator>
+
+</mujoco>
