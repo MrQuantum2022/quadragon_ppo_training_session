@@ -7,11 +7,11 @@ import glob, re
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from quadragon_env import QuadragonEnv as EnvClass
+from quadragon_env_v3b import QuadragonEnvV3b as EnvClass
 
-RUN = "v1_fixed_colab"
+RUN = "v3b_colab"
 
-ckpts = glob.glob(f"checkpoints/v1_fixed/quadragon_{RUN}_*_steps.zip")
+ckpts = glob.glob(f"checkpoints/v3b/quadragon_{RUN}_*_steps.zip")
 ckpts = [c for c in ckpts if "vecnormalize" not in c]
 ckpts.sort(key=lambda p: int(re.search(r"_(\d+)_steps", p).group(1)))
 
@@ -19,7 +19,7 @@ print(f"{'step':>10} | {'mean_reward':>11} | {'final_vx':>8} | {'survived':>8}")
 print("-" * 48)
 for c in ckpts:
     step = int(re.search(r"_(\d+)_steps", c).group(1))
-    vecnorm = f"checkpoints/v1_fixed/quadragon_{RUN}_vecnormalize_{step}_steps.pkl"
+    vecnorm = f"checkpoints/v3b/quadragon_{RUN}_vecnormalize_{step}_steps.pkl"
     venv = DummyVecEnv([lambda: EnvClass()])
     venv = VecNormalize.load(vecnorm, venv)
     venv.training = False

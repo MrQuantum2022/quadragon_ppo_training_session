@@ -111,6 +111,16 @@ class QuadragonEnv(gym.Env):
         self._prev_action = np.zeros(self.n_act, dtype=np.float32)
         self._step_count = 0
 
+        # Forward direction (world frame). Legacy default '+x' - v6 discovered
+        # the body's true long axis is Y and overrides this. One source of
+        # truth: env versions and viewer tools all read forward from here.
+        self.forward_axis = "+x"
+        self._forward_vec = np.array([1.0, 0.0])
+
+    def _forward_velocity(self) -> float:
+        """Base velocity along the configured forward axis (world frame)."""
+        return float(np.dot(self.data.qvel[:2], self._forward_vec))
+
     # ------------------------------------------------------------------
     # Core helpers
     # ------------------------------------------------------------------
@@ -197,7 +207,7 @@ class QuadragonEnv(gym.Env):
         # --- Reward terms ---
         # Forward velocity along +X, rewarded up to target then flat
         # (no bonus for overspeeding - keeps gait controlled).
-        vx = self.data.qvel[0]
+        vx = self._forward_velocity()
         r_forward = self.w_forward * min(vx, self.target_velocity) / self.target_velocity
 
         grav = self._projected_gravity()

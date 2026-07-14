@@ -32,14 +32,18 @@ from quadragon_env import QuadragonEnv
 from quadragon_env_v2 import QuadragonEnvV2
 from quadragon_env_v3a import QuadragonEnvV3a
 from quadragon_env_v3b import QuadragonEnvV3b
+from quadragon_env_v4 import QuadragonEnvV4
+from quadragon_env_v5 import QuadragonEnvV5
+from quadragon_env_v6 import QuadragonEnvV6
 
 ENVS = {"v1": QuadragonEnv, "v2": QuadragonEnvV2,
-        "v3a": QuadragonEnvV3a, "v3b": QuadragonEnvV3b}
+        "v3a": QuadragonEnvV3a, "v3b": QuadragonEnvV3b,
+        "v4": QuadragonEnvV4, "v5": QuadragonEnvV5, "v6": QuadragonEnvV6}
 
 
-def make_env(env_cls, seed: int):
+def make_env(env_cls, seed: int, env_kwargs=None):
     def _init():
-        env = Monitor(env_cls())
+        env = Monitor(env_cls(**(env_kwargs or {})))
         env.reset(seed=seed)
         return env
     return _init
@@ -47,20 +51,27 @@ def make_env(env_cls, seed: int):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--version", choices=["v1", "v2", "v3a", "v3b"], default="v2")
+    p.add_argument("--version", choices=["v1", "v2", "v3a", "v3b", "v4", "v5", "v6"], default="v2")
     p.add_argument("--n-envs", type=int, default=8)
     p.add_argument("--timesteps", type=int, default=3_000_000)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--run-name", type=str, default=None)
+    p.add_argument("--forward", choices=["+x", "-x", "+y", "-y"], default=None,
+                   help="v6 only: forward axis (confirm with live_view arrow first)")
     args = p.parse_args()
+
+    env_kwargs = {}
+    if args.forward is not None:
+        assert args.version == "v6", "--forward only applies to v6"
+        env_kwargs["forward_axis"] = args.forward
 
     run_name = args.run_name or f"{args.version}_colab"
     env_cls = ENVS[args.version]
 
     if args.n_envs == 1:
-        venv = DummyVecEnv([make_env(env_cls, args.seed)])
+        venv = DummyVecEnv([make_env(env_cls, args.seed, env_kwargs)])
     else:
-        venv = SubprocVecEnv([make_env(env_cls, args.seed + i) for i in range(args.n_envs)])
+        venv = SubprocVecEnv([make_env(env_cls, args.seed + i, env_kwargs) for i in range(args.n_envs)])
 
     venv = VecNormalize(venv, norm_obs=True, norm_reward=True, clip_obs=10.0)
 

@@ -42,9 +42,18 @@ def get_env_class(version: str):
     elif version == "v3a":
         from quadragon_env_v3a import QuadragonEnvV3a
         return QuadragonEnvV3a
-    else:
+    elif version == "v3b":
         from quadragon_env_v3b import QuadragonEnvV3b
         return QuadragonEnvV3b
+    elif version == "v4":
+        from quadragon_env_v4 import QuadragonEnvV4
+        return QuadragonEnvV4
+    elif version == "v5":
+        from quadragon_env_v5 import QuadragonEnvV5
+        return QuadragonEnvV5
+    else:
+        from quadragon_env_v6 import QuadragonEnvV6
+        return QuadragonEnvV6
 
 
 def foot_sensors(raw_env):
@@ -115,6 +124,22 @@ def analyze(log):
     print(f"Mean body height: {np.mean(log['height']):.3f} m (std {np.std(log['height']):.4f})")
     print(f"Roll std: {np.degrees(np.std(log['roll'])):.2f} deg   "
           f"Pitch std: {np.degrees(np.std(log['pitch'])):.2f} deg")
+    print()
+
+    # --- Per-joint usage: turns "that joint looks frozen" into numbers ---
+    joint_names = ["FR_hip", "FR_thigh", "FR_calf", "BR_hip", "BR_thigh", "BR_calf",
+                   "BL_hip", "BL_thigh", "BL_calf", "FL_hip", "FL_thigh", "FL_calf"]
+    # available range per joint type (deg): hip +/-40, thigh +/-60, calf -90..+10
+    avail = {"hip": 80.0, "thigh": 120.0, "calf": 100.0}
+    qdeg = np.degrees(log["qpos"])
+    print("Per-joint usage (deg): mean / std / span, and span as % of available range")
+    print("(a joint sitting still shows tiny std and span %)")
+    for i, jn in enumerate(joint_names):
+        kind = jn.split("_")[1]
+        span = float(qdeg[:, i].max() - qdeg[:, i].min())
+        pct = 100.0 * span / avail[kind]
+        print(f"  {jn:9s} mean {qdeg[:, i].mean():+7.1f}  std {qdeg[:, i].std():5.1f}  "
+              f"span {span:5.1f}  ({pct:4.0f}% of range)")
     print()
 
     print("Per-foot duty factor (fraction of episode in ground contact):")
@@ -209,7 +234,7 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("model_path")
     p.add_argument("vecnorm_path")
-    p.add_argument("--version", choices=["v1", "v2", "v3a", "v3b"], default="v2")
+    p.add_argument("--version", choices=["v1", "v2", "v3a", "v3b", "v4", "v5", "v6"], default="v2")
     p.add_argument("--steps", type=int, default=500)
     p.add_argument("--save-plot", default="checkpoint_analysis.png")
     args = p.parse_args()
@@ -223,6 +248,7 @@ def main():
     model = PPO.load(args.model_path)
     raw_env = venv.venv.envs[0]
 
+    print(f"Forward axis: {getattr(raw_env, 'forward_axis', '+x (legacy)')}\n")
     log = rollout_and_record(model, venv, raw_env, args.steps)
     analyze(log)
     plot_analysis(log, args.save_plot)
